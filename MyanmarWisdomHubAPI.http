@@ -1,0 +1,6 @@
+@MyanmarWisdomHubAPI_HostAddress = http://localhost:5160
+
+GET {{MyanmarWisdomHubAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
