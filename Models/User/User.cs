@@ -1,7 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace MyanmarWisdomHubAPI.Models
+namespace MyanmarWisdomHubAPI.Models.User
 {
     [Table("User")]
     public class User
@@ -10,21 +11,18 @@ namespace MyanmarWisdomHubAPI.Models
         public int Id { get; set; }
 
         [Required]
-        [StringLength(50)]
         public string username { get; set; }
 
         [Required]
-        [StringLength(50)]
         public string email { get; set; }
 
         [Required]
-        [StringLength(50)]
         public string password { get; set; }
 
-        [StringLength(50)]
+        [Required]
         public string first_name { get; set; }
 
-        [StringLength(50)]
+        [Required]
         public string last_name { get; set; }
 
         [Required]
@@ -32,5 +30,6 @@ namespace MyanmarWisdomHubAPI.Models
 
         [Required]
         public DateTime updated_at { get; set; } = DateTime.Now;
+
     }
 }

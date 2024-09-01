@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MyanmarWisdomHubAPI.Models;
+using MyanmarWisdomHubAPI.Models.User;
 
 namespace MyanmarWisdomHubAPI.Data
 {

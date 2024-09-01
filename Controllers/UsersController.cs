@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Azure.Core;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.EntityFrameworkCore;
 using MyanmarWisdomHubAPI.Data;
-using MyanmarWisdomHubAPI.Models;
+using MyanmarWisdomHubAPI.Models.User;
 
 namespace MyanmarWisdomHubAPI.Controllers
 {
@@ -42,92 +45,90 @@ namespace MyanmarWisdomHubAPI.Controllers
             return user;
         }
 
-        // PUT: api/Users/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        /* [HttpPut("{id}")]
-         public async Task<IActionResult> PutUser(int id, User user)
-         {
-             if (id != user.Id)
-             {
-                 return BadRequest();
-             }
-
-             _context.Entry(user).State = EntityState.Modified;
-
-             try
-             {
-                 await _context.SaveChangesAsync();
-             }
-             catch (DbUpdateConcurrencyException)
-             {
-                 if (!UserExists(id))
-                 {
-                     return NotFound();
-                 }
-                 else
-                 {
-                     throw;
-                 }
-             }
-
-             return NoContent();
-         }*/
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(int id, [FromBody] User user)
+        [HttpPut("edit")]
+        public async Task<IActionResult> EditUser([FromBody] UserEdit model)
         {
-            if (id != user.Id)
-            {
-                return BadRequest("User ID mismatch.");
-            }
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var existingUser = await _context.Users.FindAsync(id);
-            if (existingUser == null)
+            // Get the current user (you might need to implement your own method to get the user)
+            var user = await _context.Users.FindAsync(model.Id);
+            if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound("User not found");
             }
 
-            // Update the user fields
-            existingUser.username = user.username;
-            existingUser.email = user.email;
-            existingUser.password = user.password;
-            existingUser.first_name = user.first_name;
-            existingUser.last_name = user.last_name;
-            existingUser.updated_at = DateTime.Now;
+            // Update user information
+            user.username = model.Username;
+            user.email = model.Email;
+            user.first_name = model.FirstName;
+            user.last_name = model.LastName;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound("User no longer exists.");
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            // Save changes to the database
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new { Message = "User information updated successfully!" });
         }
 
         // POST: api/Users
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] UserRegister userRegisterD)
         {
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            if (ModelState.IsValid)
+            {
+                // Check if the username already exists
+                bool usernameExists = await _context.Users
+                    .AnyAsync(u => u.username == userRegisterD.username);
 
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
+                if (usernameExists)
+                {
+                    return BadRequest("Username is already taken.");
+                }
+
+                // Check if the email already exists
+                bool emailExists = await _context.Users
+                    .AnyAsync(u => u.email == userRegisterD.email);
+
+                if (emailExists)
+                {
+                    return BadRequest("Email is already taken.");
+                }
+
+                // Create and save the new user
+                var user = new User
+                {
+                    username = userRegisterD.username,
+                    email = userRegisterD.email,
+                    password = BCrypt.Net.BCrypt.HashPassword(userRegisterD.password),
+                    first_name = userRegisterD.first_name,
+                    last_name = userRegisterD.last_name
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { Message = "Registration successful" });
+            }
+
+            return BadRequest(ModelState);
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.username == userLogin.username);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(userLogin.password, user.password))
+            {
+                return BadRequest(new { Message = "Invalid username or password" });
+            }
+
+            return Ok(new { Message = "Login successful", User = new { user.Id, user.username, user.email } });
         }
 
         // DELETE: api/Users/5
