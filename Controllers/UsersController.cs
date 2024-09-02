@@ -31,19 +31,32 @@ namespace MyanmarWisdomHubAPI.Controllers
             return await _context.Users.ToListAsync();
         }
 
-        // GET: api/Users/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        // GET: api/Users/username
+        [HttpGet("{username}")]
+        public async Task<ActionResult<User>> GetUser(string username)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _context.Users
+                                     .Where(u => u.username == username)
+                                     .Select(u => new
+                                     {
+                                         u.Id,
+                                         u.username,
+                                         u.email,
+                                         u.first_name,
+                                         u.last_name,
+                                         u.profile_url
+                                     })
+                                     .FirstOrDefaultAsync();
 
             if (user == null)
             {
                 return NotFound();
             }
 
-            return user;
+            return Ok(new { User = user });
         }
+
+
 
         [HttpPut("edit")]
         public async Task<IActionResult> EditUser([FromBody] UserEdit model)
@@ -65,6 +78,7 @@ namespace MyanmarWisdomHubAPI.Controllers
             user.email = model.Email;
             user.first_name = model.FirstName;
             user.last_name = model.LastName;
+            user.profile_url = model.profile_url;
 
             // Save changes to the database
             _context.Users.Update(user);
@@ -105,7 +119,8 @@ namespace MyanmarWisdomHubAPI.Controllers
                     email = userRegisterD.email,
                     password = BCrypt.Net.BCrypt.HashPassword(userRegisterD.password),
                     first_name = userRegisterD.first_name,
-                    last_name = userRegisterD.last_name
+                    last_name = userRegisterD.last_name,
+                    profile_url = userRegisterD.profile_url
                 };
 
                 _context.Users.Add(user);
@@ -128,7 +143,7 @@ namespace MyanmarWisdomHubAPI.Controllers
                 return BadRequest(new { Message = "Invalid username or password" });
             }
 
-            return Ok(new { Message = "Login successful", User = new { user.Id, user.username, user.email } });
+            return Ok(new { Message = "Login successful", User = new { user.Id, user.username, user.email, user.first_name, user.last_name } });
         }
 
         // DELETE: api/Users/5

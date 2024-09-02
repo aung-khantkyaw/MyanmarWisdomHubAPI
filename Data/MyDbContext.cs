@@ -11,5 +11,6 @@ namespace MyanmarWisdomHubAPI.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Proverb> Proverb { get; set; } = default!;
         public DbSet<MyanmarWisdomHubAPI.Models.Riddle> Riddle { get; set; } = default!;
+        public DbSet<MyanmarWisdomHubAPI.Models.Post> Post { get; set; } = default!;
     }
 }

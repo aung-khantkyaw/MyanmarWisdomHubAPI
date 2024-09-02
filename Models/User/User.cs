@@ -31,5 +31,8 @@ namespace MyanmarWisdomHubAPI.Models.User
         [Required]
         public DateTime updated_at { get; set; } = DateTime.Now;
 
+        [Required]
+        public string profile_url { get; set; }
+
     }
 }

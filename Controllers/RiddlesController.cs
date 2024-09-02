@@ -75,7 +75,7 @@ namespace MyanmarWisdomHubAPI.Controllers
 
         // POST: api/Riddles
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
+        [HttpPost("{add}")]
         public async Task<ActionResult<Riddle>> PostRiddle(Riddle riddle)
         {
             _context.Riddle.Add(riddle);

@@ -3,17 +3,19 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyanmarWisdomHubAPI.Models
 {
-    [Table("Riddle")]
-    public class Riddle
+    [Table("Post")]
+    public class Post
     {
-        [Required]
         [Key]
         public int Id { get; set; }
 
         [Required]
-        public string riddle {  get; set; }
+        public string title { get; set; }
 
         [Required]
-        public string answer { get; set; }
+        public string body { get; set; }
+
+        [Required]
+        public int user_id { get; set; }
     }
 }
