@@ -42,6 +42,41 @@ namespace MyanmarWisdomHubAPI.Controllers
             return quiz;
         }
 
+        // GET: api/Quizs/ids?ids=6,4,2,5,1
+        [HttpGet("ids")]
+        public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzesByIds([FromQuery] string ids)
+        {
+            if (string.IsNullOrWhiteSpace(ids))
+            {
+                return BadRequest("No IDs provided.");
+            }
+
+            var idList = ids.Split(',')
+                .Select(id => int.TryParse(id, out var result) ? result : (int?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id.Value)
+                .ToList();
+
+            var quizzes = await _context.Quiz
+                .Where(q => idList.Contains(q.Id))
+                .ToListAsync();
+
+            return quizzes;
+        }
+
+        // GET: api/Quizs/random
+        [HttpGet("random")]
+        public async Task<ActionResult<IEnumerable<Quiz>>> GetRandomQuizzes()
+        {
+            // Get 5 random quizzes from the Quiz table
+            var randomQuizzes = await _context.Quiz
+                                              .OrderBy(q => Guid.NewGuid()) // Order by a random GUID to randomize the selection
+                                              .Take(5)                      // Take 5 random quizzes
+                                              .ToListAsync();
+
+            return randomQuizzes;
+        }
+
         // PUT: api/Quizs/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]

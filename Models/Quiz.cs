@@ -16,15 +16,15 @@ namespace MyanmarWisdomHubAPI.Models
         public string answer { get; set; }
 
         [Required]
-        public string option1 { get; set; }
+        public string option_one { get; set; }
 
         [Required]
-        public string option2 { get; set; }
+        public string option_two { get; set; }
 
         [Required]
-        public string option3 { get; set; }
+        public string option_three { get; set; }
 
         [Required]
-        public string option4 { get; set; }
+        public string option_four { get; set; }
     }
 }

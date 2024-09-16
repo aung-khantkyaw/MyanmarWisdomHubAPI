@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Azure.Core;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis.Scripting;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MyanmarWisdomHubAPI.Data;
 using MyanmarWisdomHubAPI.Models.User;
@@ -17,87 +10,105 @@ namespace MyanmarWisdomHubAPI.Controllers
     [ApiController]
     public class UsersController : ControllerBase
     {
+
         private readonly MyDbContext _context;
 
         public UsersController(MyDbContext context)
         {
             _context = context;
         }
-
-        // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> Getusers()
+        public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
         {
-            return await _context.Users.ToListAsync();
+            try
+            {
+                var users = await _context.Users
+                    .Select(user => new
+                    {
+                        Id = user.Id,
+                        Username = user.username,
+                        Email = user.email,
+                        FirstName = user.first_name,
+                        LastName = user.last_name,
+                        ProfileUrl = user.profile_url
+                    })
+                    .ToListAsync();
+
+                return users == null || users.Count == 0 ? (ActionResult<IEnumerable<User>>)NotFound("No users found.") : Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Internal server error");
+            }
         }
+
 
         // GET: api/Users/username
         [HttpGet("{username}")]
         public async Task<ActionResult<User>> GetUser(string username)
         {
             var user = await _context.Users
-                                     .Where(u => u.username == username)
-                                     .Select(u => new
-                                     {
-                                         u.Id,
-                                         u.username,
-                                         u.email,
-                                         u.first_name,
-                                         u.last_name,
-                                         u.profile_url
-                                     })
-                                     .FirstOrDefaultAsync();
+                                      .Where(u => u.username == username)
+                                      .FirstOrDefaultAsync();
 
             if (user == null)
             {
-                return NotFound();
+                return NotFound(); // Return 404 if the user is not found
             }
 
-            return Ok(new { User = user });
+            return Ok(user); // Return 200 with the user data
         }
 
-
-
-        [HttpPut("edit")]
-        public async Task<IActionResult> EditUser([FromBody] UserEdit model)
+        [HttpPut("{username}")]
+        public async Task<IActionResult> EditUser(string username, [FromBody] UserEdit model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            // Get the current user (you might need to implement your own method to get the user)
-            var user = await _context.Users.FindAsync(model.Id);
+            // Find the user by username
+            var user = await _context.Users
+                                      .FirstOrDefaultAsync(u => u.username == username);
+
             if (user == null)
             {
                 return NotFound("User not found");
             }
 
-            // Update user information
-            user.username = model.Username;
-            user.email = model.Email;
-            user.first_name = model.FirstName;
-            user.last_name = model.LastName;
-            user.profile_url = model.profile_url;
+            // Update user properties
+            user.email = model.Email ?? user.email;
+            user.first_name = model.FirstName ?? user.first_name;
+            user.last_name = model.LastName ?? user.last_name;
+            user.profile_url = model.profile_url ?? user.profile_url;
 
             // Save changes to the database
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the user.");
+            }
 
             return Ok(new { Message = "User information updated successfully!" });
         }
 
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegister userRegisterD)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
             {
                 // Check if the username already exists
                 bool usernameExists = await _context.Users
                     .AnyAsync(u => u.username == userRegisterD.username);
-
                 if (usernameExists)
                 {
                     return BadRequest("Username is already taken.");
@@ -106,14 +117,13 @@ namespace MyanmarWisdomHubAPI.Controllers
                 // Check if the email already exists
                 bool emailExists = await _context.Users
                     .AnyAsync(u => u.email == userRegisterD.email);
-
                 if (emailExists)
                 {
                     return BadRequest("Email is already taken.");
                 }
 
                 // Create and save the new user
-                var user = new User
+                var newUser = new User
                 {
                     username = userRegisterD.username,
                     email = userRegisterD.email,
@@ -123,48 +133,106 @@ namespace MyanmarWisdomHubAPI.Controllers
                     profile_url = userRegisterD.profile_url
                 };
 
-                _context.Users.Add(user);
+                _context.Users.Add(newUser);
                 await _context.SaveChangesAsync();
 
                 return Ok(new { Message = "Registration successful" });
             }
-
-            return BadRequest(ModelState);
+            catch (Exception ex)
+            {
+                // Log the exception details here if you have a logging mechanism
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while registering the user", Details = ex.Message });
+            }
         }
+
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
         {
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.username == userLogin.username);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(userLogin.password, user.password))
+            if (!ModelState.IsValid)
             {
-                return BadRequest(new { Message = "Invalid username or password" });
+                return BadRequest(ModelState);
             }
 
-            return Ok(new { Message = "Login successful", User = new { user.Id, user.username, user.email, user.first_name, user.last_name } });
+            try
+            {
+                // Query to find the user by username
+                var user = await _context.Users
+                    .Where(u => u.username == userLogin.username)
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.username,
+                        u.email,
+                        u.password,
+                        u.first_name,
+                        u.last_name,
+                        u.profile_url
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (user == null)
+                {
+                    return BadRequest(new { Message = "username is not found!" });
+                }
+
+                // Verify the password
+                if (BCrypt.Net.BCrypt.Verify(userLogin.password, user.password))
+                {
+                    return Ok(new
+                    {
+                        Message = "Login successful",
+                        User = new
+                        {
+                            Id = user.Id,
+                            Username = user.username,
+                            Email = user.email,
+                            FirstName = user.first_name,
+                            LastName = user.last_name,
+                            ProfileUrl = user.profile_url
+                        }
+                    });
+                }
+                else
+                {
+                    return BadRequest(new { Message = "Invalid password" });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception details here if you have a logging mechanism
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred during login", Details = ex.Message });
+            }
         }
+
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
+            try
             {
-                return NotFound();
+                // Find the user by ID
+                var user = await _context.Users.FindAsync(id);
+
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                // Remove the user from the context
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                // Log the exception details here if you have a logging mechanism
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while deleting the user", Details = ex.Message });
+            }
         }
 
-        private bool UserExists(int id)
-        {
-            return _context.Users.Any(e => e.Id == id);
-        }
+
     }
 }

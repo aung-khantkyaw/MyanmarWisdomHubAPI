@@ -23,32 +23,50 @@ namespace MyanmarWisdomHubAPI.Controllers
 
         // GET: api/Posts
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Post>>> GetPost()
+        public async Task<ActionResult<IEnumerable<object>>> GetPost()
         {
-            return await _context.Post.ToListAsync();
+            var posts = await (from post in _context.Post
+                               join user in _context.Users
+                               on post.user_id equals user.Id
+                               select new
+                               {
+                                   Profile = user.profile_url,
+                                   Username = user.username,
+                                   Id = post.Id,
+                                   Title = post.title,
+                                   Body = post.body
+                               }).ToListAsync();
+
+            return Ok(posts);
         }
+
 
         // GET: api/Posts/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<IEnumerable<Post>>> GetPosts(int id)
+        public async Task<ActionResult<IEnumerable<object>>> GetPosts(int id)
         {
-            var posts = await _context.Post
-                                      .Where(post => post.user_id == id)
-                                      .Select(post => new
-                                      {
-                                          post.Id,
-                                          post.title,
-                                          post.body,
-                                          post.user_id
-                                      }).ToListAsync();
+            var posts = await (from post in _context.Post
+                               join user in _context.Users
+                               on post.user_id equals user.Id
+                               where post.user_id == id
+                               select new
+                               {
+                                   Profile = user.profile_url,
+                                   Username = user.username,
+                                   Id = post.Id,
+                                   Title = post.title,
+                                   Body = post.body
+                               }).ToListAsync();
 
-            if (posts == null || !posts.Any())
+            if (!posts.Any())
             {
                 return NotFound();
             }
 
             return Ok(posts);
         }
+
+
 
 
         // PUT: api/Posts/5
