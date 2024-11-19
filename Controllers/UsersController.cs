@@ -59,6 +59,22 @@ namespace MyanmarWisdomHubAPI.Controllers
             return Ok(user); // Return 200 with the user data
         }
 
+        // GET: api/Users/ById/id
+        [HttpGet("ById/{id}")]
+        public async Task<ActionResult<User>> GetUserById(int id)
+        {
+            var user = await _context.Users
+                                      .Where(u => u.Id == id)
+                                      .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                return NotFound(); // Return 404 if the user is not found
+            }
+
+            return Ok(user); // Return 200 with the user data
+        }
+
         [HttpPut("{username}")]
         public async Task<IActionResult> EditUser(string username, [FromBody] UserEdit model)
         {

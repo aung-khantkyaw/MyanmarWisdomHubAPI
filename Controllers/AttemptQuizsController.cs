@@ -54,36 +54,6 @@ namespace MyanmarWisdomHubAPI.Controllers
             return Attempt_Quiz;
         }
 
-        //// PUT: api/Attempt_Quizs/5
-        //// To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        //[HttpPut("{id}")]
-        //public async Task<IActionResult> PutAttempt_Quiz(int id, Attempt_Quiz Attempt_Quiz)
-        //{
-        //    if (id != Attempt_Quiz.attempt_Id)
-        //    {
-        //        return BadRequest();
-        //    }
-
-        //    _context.Entry(Attempt_Quiz).State = EntityState.Modified;
-
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException)
-        //    {
-        //        if (!Attempt_QuizExists(id))
-        //        {
-        //            return NotFound();
-        //        }
-        //        else
-        //        {
-        //            throw;
-        //        }
-        //    }
-
-        //    return NoContent();
-        //}
         public class UpdateAttemptQuizModel
         {
             public int PlayerTwoScore { get; set; }
