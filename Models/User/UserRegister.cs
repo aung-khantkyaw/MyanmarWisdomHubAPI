@@ -20,7 +20,10 @@ namespace MyanmarWisdomHubAPI.Models.User
         [Required]
         public string last_name { get; set; }
 
+        //[Required]
+        //public string profile_url { get; set; }
+
         [Required]
-        public string profile_url { get; set; }
+        public IFormFile profileFile { get; set; }
     }
 }

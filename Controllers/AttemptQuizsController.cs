@@ -112,20 +112,28 @@ namespace MyanmarWisdomHubAPI.Controllers
             return CreatedAtAction("GetAttempt_Quiz", new { id = Attempt_Quiz.attempt_Id }, Attempt_Quiz);
         }
 
-        // DELETE: api/Attempt_Quizs/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAttempt_Quiz(int id)
         {
-            var Attempt_Quiz = await _context.Attempt_Quiz.FindAsync(id);
-            if (Attempt_Quiz == null)
+            try
             {
-                return NotFound();
+                var Attempt_Quiz = await _context.Attempt_Quiz.FindAsync(id);
+                if (Attempt_Quiz == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Attempt_Quiz.Remove(Attempt_Quiz);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Attempt_Quiz.Remove(Attempt_Quiz);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (DbUpdateException ex)
+            {
+                // Log the exception
+                // _logger.LogError(ex, "Error occurred while deleting Attempt_Quiz with ID {Id}", id);
+                return StatusCode(500, "Internal server error");
+            }
         }
 
         private bool Attempt_QuizExists(int id)

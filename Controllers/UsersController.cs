@@ -75,45 +75,94 @@ namespace MyanmarWisdomHubAPI.Controllers
             return Ok(user); // Return 200 with the user data
         }
 
-        [HttpPut("{username}")]
-        public async Task<IActionResult> EditUser(string username, [FromBody] UserEdit model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        //[HttpPut("{username}")]
+        //public async Task<IActionResult> EditUser(string username, [FromBody] UserEdit model)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ModelState);
+        //    }
 
-            // Find the user by username
-            var user = await _context.Users
-                                      .FirstOrDefaultAsync(u => u.username == username);
+        //    // Find the user by username
+        //    var user = await _context.Users
+        //                              .FirstOrDefaultAsync(u => u.username == username);
 
-            if (user == null)
-            {
-                return NotFound("User not found");
-            }
+        //    if (user == null)
+        //    {
+        //        return NotFound("User not found");
+        //    }
 
-            // Update user properties
-            user.email = model.Email ?? user.email;
-            user.first_name = model.FirstName ?? user.first_name;
-            user.last_name = model.LastName ?? user.last_name;
-            user.profile_url = model.profile_url ?? user.profile_url;
+        //    // Update user properties
+        //    user.email = model.Email ?? user.email;
+        //    user.first_name = model.FirstName ?? user.first_name;
+        //    user.last_name = model.LastName ?? user.last_name;
+        //    user.profile_url = model.profile_url ?? user.profile_url;
 
-            // Save changes to the database
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the user.");
-            }
+        //    // Save changes to the database
+        //    try
+        //    {
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    catch (DbUpdateException ex)
+        //    {
+        //        return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the user.");
+        //    }
 
-            return Ok(new { Message = "User information updated successfully!" });
-        }
+        //    return Ok(new { Message = "User information updated successfully!" });
+        //}
 
+
+        //[HttpPost("register")]
+        //public async Task<IActionResult> Register([FromBody] UserRegister userRegisterD)
+        //{
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return BadRequest(ModelState);
+        //    }
+
+        //    try
+        //    {
+        //        // Check if the username already exists
+        //        bool usernameExists = await _context.Users
+        //            .AnyAsync(u => u.username == userRegisterD.username);
+        //        if (usernameExists)
+        //        {
+        //            return BadRequest("Username is already taken.");
+        //        }
+
+        //        // Check if the email already exists
+        //        bool emailExists = await _context.Users
+        //            .AnyAsync(u => u.email == userRegisterD.email);
+        //        if (emailExists)
+        //        {
+        //            return BadRequest("Email is already taken.");
+        //        }
+
+        //        // Create and save the new user
+        //        var newUser = new User
+        //        {
+        //            username = userRegisterD.username,
+        //            email = userRegisterD.email,
+        //            password = BCrypt.Net.BCrypt.HashPassword(userRegisterD.password),
+        //            first_name = userRegisterD.first_name,
+        //            last_name = userRegisterD.last_name,
+        //            profile_url = userRegisterD.profile_url
+        //        };
+
+        //        _context.Users.Add(newUser);
+        //        await _context.SaveChangesAsync();
+
+        //        return Ok(new { Message = "Registration successful" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Log the exception details here if you have a logging mechanism
+        //        return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while registering the user", Details = ex.Message });
+        //    }
+        //}
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] UserRegister userRegisterD)
+        public async Task<IActionResult> Register([FromForm] UserRegister userRegisterD) // Change [FromBody] to [FromForm]
         {
             if (!ModelState.IsValid)
             {
@@ -138,6 +187,27 @@ namespace MyanmarWisdomHubAPI.Controllers
                     return BadRequest("Email is already taken.");
                 }
 
+                // Save the profile file if it exists
+                string profileUrl = null;
+                if (userRegisterD.profileFile != null && userRegisterD.profileFile.Length > 0)
+                {
+                    var fileName = Path.GetFileName(userRegisterD.profileFile.FileName);
+                    var filePath = Path.Combine("wwwroot/uploads", fileName);
+
+                    // Create the uploads directory if it doesn't exist
+                    if (!Directory.Exists("wwwroot/uploads"))
+                    {
+                        Directory.CreateDirectory("wwwroot/uploads");
+                    }
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await userRegisterD.profileFile.CopyToAsync(stream);
+                    }
+
+                    profileUrl = $"/uploads/{fileName}"; // Store the URL/path
+                }
+
                 // Create and save the new user
                 var newUser = new User
                 {
@@ -146,7 +216,7 @@ namespace MyanmarWisdomHubAPI.Controllers
                     password = BCrypt.Net.BCrypt.HashPassword(userRegisterD.password),
                     first_name = userRegisterD.first_name,
                     last_name = userRegisterD.last_name,
-                    profile_url = userRegisterD.profile_url
+                    profile_url = profileUrl // Save the profile URL
                 };
 
                 _context.Users.Add(newUser);
@@ -160,7 +230,6 @@ namespace MyanmarWisdomHubAPI.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while registering the user", Details = ex.Message });
             }
         }
-
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLogin userLogin)
@@ -219,6 +288,48 @@ namespace MyanmarWisdomHubAPI.Controllers
                 // Log the exception details here if you have a logging mechanism
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred during login", Details = ex.Message });
             }
+        }
+
+        [HttpPut("{username}")]
+        public async Task<IActionResult> EditUser(string username, [FromForm] UserEdit model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.username == username);
+            if (user == null)
+            {
+                return NotFound("User  not found");
+            }
+
+            // Update user properties
+            user.email = model.Email ?? user.email;
+            user.first_name = model.FirstName ?? user.first_name;
+            user.last_name = model.LastName ?? user.last_name;
+
+            // Handle image upload
+            if (model.ProfileImage != null && model.ProfileImage.Length > 0)
+            {
+                var filePath = Path.Combine("wwwroot/uploads", model.ProfileImage.FileName); // Define your path
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.ProfileImage.CopyToAsync(stream);
+                }
+                user.profile_url = $"/uploads/{model.ProfileImage.FileName}"; // Save the image URL
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while updating the user.");
+            }
+
+            return Ok(new { Message = "User  information updated successfully!" });
         }
 
 
